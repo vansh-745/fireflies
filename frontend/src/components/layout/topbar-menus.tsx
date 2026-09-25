@@ -3,7 +3,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { Bell, CheckCheck, LogOut, Monitor, Moon, Settings, Sun, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
 import { Avatar } from "@/components/ui/avatar";
@@ -11,6 +10,7 @@ import { IconButton } from "@/components/ui/button";
 import { Menu, MenuItem, MenuLabel, MenuSeparator, Popover } from "@/components/ui/menu";
 import { cn } from "@/lib/cn";
 import { useMarkNotificationsRead, useMe, useNotifications } from "@/lib/queries";
+import { useTheme } from "@/lib/theme";
 
 export function NotificationsMenu() {
   const router = useRouter();
@@ -130,10 +130,11 @@ export function ProfileMenu() {
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const dark = resolvedTheme === "dark";
+  // Icons switch with CSS so server and client markup always match.
   return (
-    <IconButton label={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={() => setTheme(dark ? "light" : "dark")}>
-      {dark ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+    <IconButton label="Toggle dark mode" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
+      <Moon className="size-[18px] dark:hidden" />
+      <Sun className="hidden size-[18px] dark:block" />
     </IconButton>
   );
 }

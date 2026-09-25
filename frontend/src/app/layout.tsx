@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Inter } from "next/font/google";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 import { Providers } from "./providers";
@@ -23,7 +24,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${dmSans.variable}`} suppressHydrationWarning>
+    <html lang="en" data-theme="light" className={`${inter.variable} ${dmSans.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Applies the saved theme before first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body>
         <Providers>
           <AppShell>{children}</AppShell>

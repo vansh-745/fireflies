@@ -1,10 +1,11 @@
 "use client";
 
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider, useTheme } from "next-themes";
 import { Tooltip } from "radix-ui";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { Toaster, toast } from "sonner";
+
+import { useTheme } from "@/lib/theme";
 
 // Sonner reads these variables; point them at our tokens so toasts follow the theme.
 const toasterTokens = {
@@ -24,7 +25,7 @@ function ThemedToaster() {
   const { resolvedTheme } = useTheme();
   return (
     <Toaster
-      theme={resolvedTheme === "dark" ? "dark" : "light"}
+      theme={resolvedTheme}
       position="bottom-right"
       richColors
       closeButton
@@ -49,13 +50,11 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="data-theme" defaultTheme="light" enableSystem disableTransitionOnChange>
-      <QueryClientProvider client={queryClient}>
-        <Tooltip.Provider delayDuration={400} skipDelayDuration={500}>
-          {children}
-        </Tooltip.Provider>
-        <ThemedToaster />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <Tooltip.Provider delayDuration={400} skipDelayDuration={500}>
+        {children}
+      </Tooltip.Provider>
+      <ThemedToaster />
+    </QueryClientProvider>
   );
 }

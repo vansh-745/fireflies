@@ -202,6 +202,12 @@ h4 {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
+/* Text fields draw their own focus border + ring. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
 
 ::selection {
   background: var(--accent-subtle);
