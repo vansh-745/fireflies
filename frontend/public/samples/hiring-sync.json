@@ -1,0 +1,12 @@
+{
+  "segments": [
+    { "speaker": "Rosa Diaz", "text": "Let's go through the backend engineer pipeline. We have 14 candidates in the loop right now.", "start": 0.5, "end": 7.2 },
+    { "speaker": "Ken Ito", "text": "Three of them finished the onsite this week. Two were strong, one was a no hire on system design.", "start": 7.8, "end": 15.9 },
+    { "speaker": "Rosa Diaz", "text": "Which two were strong? I want to move fast, we're losing candidates to other offers.", "start": 16.4, "end": 22.8 },
+    { "speaker": "Ken Ito", "text": "Amara and Jonas. Amara had the best debugging round I've seen this year.", "start": 23.3, "end": 29.1 },
+    { "speaker": "Lena Vogel", "text": "Compensation for Amara might be above our band. She's asking for around 185 thousand.", "start": 29.6, "end": 36.4 },
+    { "speaker": "Rosa Diaz", "text": "I'll talk to finance about an exception. Lena, can you prepare the offer for Jonas by Thursday?", "start": 36.9, "end": 44.0 },
+    { "speaker": "Lena Vogel", "text": "Yes, I'll have the Jonas offer ready by Thursday and schedule the call for Friday.", "start": 44.5, "end": 50.3 },
+    { "speaker": "Ken Ito", "text": "I'll write up the debrief notes for both candidates today.", "start": 50.8, "end": 55.0 }
+  ]
+}

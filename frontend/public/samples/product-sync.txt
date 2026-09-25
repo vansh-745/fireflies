@@ -1,0 +1,12 @@
+[00:00:03] Maya Chen: Morning everyone. Let's review the mobile app release plan for version 3.2.
+[00:00:10] Leo Park: The build is feature complete. We still have eleven open bugs, and two of them are crashes on Android 14.
+[00:00:21] Maya Chen: Crashes block the release. Leo, can you prioritize the two Android crashes this week?
+[00:00:28] Leo Park: Yes, I'll fix both crashes by Wednesday and send a new build to QA.
+[00:00:36] Ines Duarte: From QA, the regression suite takes about six hours. If the build lands Wednesday, we can sign off Thursday.
+[00:00:47] Maya Chen: Great. What about the new onboarding screens? Did we get feedback from the beta group?
+[00:00:55] Ines Duarte: Yes, 38 beta users responded. Completion of onboarding went from 61 percent to 79 percent.
+[00:01:06] Leo Park: That's a big jump. Should we still keep the skip button on the second screen?
+[00:01:13] Maya Chen: Let's keep it. We need to measure how many people skip before we remove anything.
+[00:01:21] Ines Duarte: I'll add an analytics event for the skip button so we can track it after launch.
+[00:01:29] Maya Chen: Perfect. So the plan is: crash fixes Wednesday, QA sign-off Thursday, and we submit to the app stores on Friday.
+[00:01:40] Leo Park: Sounds good. I'll draft the release notes as well.

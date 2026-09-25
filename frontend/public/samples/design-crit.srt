@@ -1,0 +1,27 @@
+1
+00:00:02,000 --> 00:00:09,000
+Ava Brooks: Today's crit is the new settings page. The goal is to make billing easier to find.
+
+2
+00:00:09,500 --> 00:00:17,000
+Noah Fields: I like the grouped sections. But the billing tab is still below the fold on smaller laptops.
+
+3
+00:00:17,500 --> 00:00:24,000
+Ava Brooks: Good catch. What if billing moves into the left navigation instead of the page body?
+
+4
+00:00:24,500 --> 00:00:33,000
+Zoe Tan: That works. We should also show the current plan and renewal date at the top of the billing section.
+
+5
+00:00:33,500 --> 00:00:40,000
+Noah Fields: Can we test both layouts with five customers before we commit?
+
+6
+00:00:40,500 --> 00:00:48,000
+Ava Brooks: Yes. Zoe, can you set up the usability test for next Tuesday?
+
+7
+00:00:48,500 --> 00:00:54,000
+Zoe Tan: Sure, I'll recruit five customers and share the test plan by Friday.

@@ -1,3 +1,5 @@
+import { HomeDashboard } from "@/components/home/home-dashboard";
+
 export default function HomePage() {
-  return <div className="p-8">Home</div>;
+  return <HomeDashboard />;
 }
