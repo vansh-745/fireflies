@@ -5,6 +5,15 @@ interactive transcript synced to a media player, AI-generated notes (summary, ou
 AskFred chat, full-text search across every meeting, and full CRUD — built with **Next.js 16 + TypeScript**,
 **FastAPI** and **SQLite**.
 
+| | |
+| --- | --- |
+| **Live demo** | **<https://fireflies-lyart.vercel.app>** |
+| API docs (Swagger) | <https://fireflies-api-sandy.vercel.app/docs> |
+| Source | <https://github.com/vansh-745/fireflies> |
+
+The demo comes pre-loaded with 8 meetings. Open one to see the synced transcript, player and AI notes, or
+upload a transcript from the **Uploads** page (sample files are provided there).
+
 ![Meeting page: outline, transcript and player stay in sync](docs/screenshots/meeting-detail.png)
 
 | Meetings library | AskFred (dark mode) |
@@ -68,10 +77,11 @@ authentication (a default user is always signed in).
 | --- | --- |
 | Frontend | Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4, TanStack Query, Radix UI primitives, Sonner toasts, lucide icons, date-fns |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.1 (typed ORM), Pydantic v2, Uvicorn |
-| Database | SQLite with enforced foreign keys and an **FTS5** full-text index (local file, or Turso's hosted SQLite in production) |
+| Database | SQLite with enforced foreign keys and an **FTS5** full-text index: a local file in development, [Turso](https://turso.tech) (hosted SQLite / libSQL) in production |
 | AI (optional) | Anthropic Claude via the official `anthropic` SDK (structured JSON output for the notes, prompt caching for chat) |
 | Exports | fpdf2 (PDF), plain Markdown / text / SRT |
-| Tests | pytest + FastAPI TestClient (26 tests) |
+| Hosting | Vercel (Next.js app + FastAPI as a Python function), Turso database |
+| Tests | pytest + FastAPI TestClient (28 tests, run against both SQLite and libSQL/Turso) |
 
 ---
 
@@ -95,7 +105,8 @@ are at <http://localhost:8000/docs>.
 
 ```bash
 python -m app.seed.seed --reset    # wipe and reseed the demo data
-python -m pytest                   # run the test suite
+python -m pytest                   # run the test suite (SQLite)
+TEST_DATABASE_URL=sqlite+libsql:////tmp/t.db python -m pytest   # same suite through the Turso driver
 ```
 
 ### 2. Frontend (Next.js on :3000)
@@ -375,7 +386,19 @@ without a key. Upload one of the sample files on the **Uploads** page to see the
 
 ## Deployment
 
-### Vercel (frontend + backend)
+### Live setup
+
+| Piece | Where |
+| --- | --- |
+| Web app (`frontend/`) | Vercel project `fireflies` → <https://fireflies-lyart.vercel.app> |
+| API (`backend/`) | Vercel project `fireflies-api` (Python function) → <https://fireflies-api-sandy.vercel.app> |
+| Database | Turso database `fireflies` in AWS us-east-1, next to Vercel's default `iad1` region |
+
+To redeploy after a change, run `npx vercel deploy --prod` from `backend/` or `frontend/` (each folder
+is linked to its project), or connect the GitHub repo to each project in Vercel (*Settings → Git*, with the
+matching root directory) to deploy on every push.
+
+### Vercel (frontend + backend), from scratch
 
 Both apps deploy to Vercel as **two projects from the same repo**. Vercel detects the FastAPI app
 (`backend/app/main.py` exports `app`) and installs `backend/requirements.txt`.
@@ -385,9 +408,9 @@ on cold start. For data that persists, use **[Turso](https://turso.tech)** (host
 runs the same schema, including the FTS5 search index, and the whole test suite passes against it.
 
 ```bash
-turso db create fireflies-clone          # or create it in the Turso dashboard
-turso db show fireflies-clone --url      # → libsql://fireflies-clone-<you>.turso.io
-turso db tokens create fireflies-clone   # → auth token
+turso db create fireflies --location aws-us-east-1   # or create it in the Turso dashboard
+turso db show fireflies --url                        # → libsql://fireflies-<you>.aws-us-east-1.turso.io
+turso db tokens create fireflies                     # → auth token
 ```
 
 1. **Backend project.** In Vercel: *Add New → Project*, import the repo, set **Root Directory = `backend`**
@@ -395,12 +418,12 @@ turso db tokens create fireflies-clone   # → auth token
 
    | Variable | Value |
    | --- | --- |
-   | `TURSO_DATABASE_URL` | `libsql://fireflies-clone-<you>.turso.io` |
+   | `TURSO_DATABASE_URL` | `libsql://fireflies-<you>.aws-us-east-1.turso.io` |
    | `TURSO_AUTH_TOKEN` | the token from above |
    | `ANTHROPIC_API_KEY` | *(optional)* enables Claude notes and AskFred |
 
    Deploy, then open `https://<backend>.vercel.app/api/health`. The first request creates the tables
-   and seeds the demo meetings, once: concurrent cold starts can't double-seed.
+   and seeds the demo meetings (about 15 s, one time only); concurrent cold starts can't double-seed.
    *Without the Turso variables the API still runs, on `/tmp` SQLite that re-seeds on every cold start.
    That's fine for a quick look, but changes don't persist.*
 
@@ -409,7 +432,8 @@ turso db tokens create fireflies-clone   # → auth token
 
 On Vercel, Claude-written notes run *inside* the upload request (`RUN_AI_INLINE`, on automatically
 when `VERCEL` is set), because a serverless instance may be frozen once the response is sent.
-`backend/vercel.json` allows 300 s for that.
+`backend/vercel.json` allows 300 s for that. `.vercelignore` files keep virtualenvs, build output,
+local databases and `.env*` files out of uploads.
 
 ### Render or Docker (alternative)
 
@@ -457,7 +481,9 @@ frontend/
     home/ search/ uploads/ settings/ placeholders/
   src/lib/               API client, types, queries, player store, theme, preferences, formatters
   public/samples/        sample transcripts in every supported format
-render.yaml              Render Blueprint
+backend/vercel.json      Vercel function settings (max duration)
+render.yaml              Render Blueprint (alternative hosting)
+docs/screenshots/        images used in this README
 ```
 
 ---
@@ -476,5 +502,7 @@ render.yaml              Render Blueprint
   Adding an Anthropic key upgrades notes and AskFred with no other changes.
 - **Branding.** This is an educational clone: the logo mark is original, and the name "Fireflies" and
   the assistant "Fred" are used only to mirror the product being cloned.
+- **Cold starts.** The API runs as a serverless function, so the first request after a quiet period
+  can take a few seconds while an instance starts.
 - **Browser-local preferences** (theme, playback speed, auto-scroll, notification toggles) live in
   `localStorage`; everything else persists in the database.
