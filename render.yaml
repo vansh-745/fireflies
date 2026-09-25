@@ -1,0 +1,37 @@
+# Render Blueprint: one-click deploy of the API and the web app.
+# Dashboard → New → Blueprint → pick this repo. After the API is live, set
+# BACKEND_URL on the web service to the API's public URL and redeploy it.
+services:
+  - type: web
+    name: fireflies-clone-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      # Free instances have an ephemeral disk: the demo data is re-seeded on each start.
+      - key: SEED_ON_STARTUP
+        value: "true"
+      - key: CORS_ORIGINS
+        sync: false
+      # Optional: enables Claude-written notes and AskFred answers.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  - type: web
+    name: fireflies-clone-web
+    runtime: node
+    rootDir: frontend
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- --port $PORT
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # e.g. https://fireflies-clone-api.onrender.com (read at build time by next.config.ts)
+      - key: BACKEND_URL
+        sync: false

@@ -11,7 +11,7 @@ import pytest
 _tmp = Path(tempfile.mkdtemp()) / "test.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}"
 os.environ["SEED_ON_STARTUP"] = "true"
-os.environ.pop("ANTHROPIC_API_KEY", None)
+os.environ["ANTHROPIC_API_KEY"] = ""  # empty (not unset) so a local .env key is never picked up
 
 from fastapi.testclient import TestClient  # noqa: E402
 
