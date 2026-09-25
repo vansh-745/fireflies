@@ -95,7 +95,7 @@ function LoadedMeeting({ meeting, segments }: { meeting: MeetingDetail; segments
   const [filter, setFilter] = useState<TranscriptFilter>(null);
   const [autoScroll, setAutoScroll] = useState(prefs.autoScroll);
   const [panel, setPanel] = useState<SidePanel | null>("search");
-  const [mobileView, setMobileView] = useState<"notes" | "transcript">(linkedMs !== null ? "transcript" : "notes");
+  const [mobileView, setMobileView] = useState<"notes" | "transcript" | "askfred">(linkedMs !== null ? "transcript" : "notes");
   const [jump, setJump] = useState<{ token: number; target: number | null }>({
     token: linkedMs !== null ? 1 : 0,
     target: linkedMs,
@@ -182,6 +182,7 @@ function LoadedMeeting({ meeting, segments }: { meeting: MeetingDetail; segments
               items={[
                 { value: "notes", label: <><Sparkles className="size-3.5" /> AI Notes</> },
                 { value: "transcript", label: <><FileText className="size-3.5" /> Transcript</> },
+                { value: "askfred", label: <><Bot className="size-3.5" /> AskFred</> },
               ]}
             />
           </div>
@@ -226,6 +227,12 @@ function LoadedMeeting({ meeting, segments }: { meeting: MeetingDetail; segments
             <div className={cn("min-w-0 flex-[1.15] flex-col lg:flex", mobileView === "transcript" ? "flex" : "hidden")}>
               <TranscriptPanel />
             </div>
+            {/* Phones have no tool rail, so AskFred gets its own tab there. */}
+            {mobileView === "askfred" && (
+              <div className="flex min-w-0 flex-1 flex-col bg-surface lg:hidden">
+                <AskFredPanel />
+              </div>
+            )}
           </div>
 
           <PlayerBar />

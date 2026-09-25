@@ -197,7 +197,7 @@ export function PlayerBar() {
       <IconButton
         label={hasMedia ? (muted ? "Unmute" : "Mute") : "Simulated playback — add a recording URL to hear audio"}
         tooltipSide="top"
-        className={cn("hidden sm:inline-flex", !hasMedia && "opacity-60")}
+        className={cn("max-sm:hidden", !hasMedia && "opacity-60")}
         onClick={() => {
           const media = document.querySelector<HTMLMediaElement>("[data-meeting-media]");
           if (media) {

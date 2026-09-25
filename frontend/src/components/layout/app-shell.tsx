@@ -23,23 +23,25 @@ function Topbar({ collapsed, onToggleSidebar, onOpenMobileNav }: { collapsed: bo
   const openCreate = useOpenCreateMeeting();
   const [captureOpen, setCaptureOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30 flex h-(--topbar-height) shrink-0 items-center gap-3 border-b border-border bg-surface px-4">
+    <header className="sticky top-0 z-30 flex h-(--topbar-height) shrink-0 items-center gap-2 border-b border-border bg-surface px-3 sm:gap-3 sm:px-4">
       <IconButton label="Open navigation" className="md:hidden" onClick={onOpenMobileNav}>
         <MenuIcon className="size-5" />
       </IconButton>
-      <IconButton label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="hidden md:inline-flex" onClick={onToggleSidebar}>
+      <IconButton label={collapsed ? "Expand sidebar" : "Collapse sidebar"} className="max-md:hidden" onClick={onToggleSidebar}>
         {collapsed ? <PanelLeftOpen className="size-[18px]" /> : <PanelLeftClose className="size-[18px]" />}
       </IconButton>
       <GlobalSearch />
       <div className="ml-auto flex items-center gap-1.5">
-        <Button variant="soft" size="sm" className="hidden lg:inline-flex" icon={<Radio className="size-4" />} onClick={() => setCaptureOpen(true)}>
+        <Button variant="soft" size="sm" className="max-lg:hidden" icon={<Radio className="size-4" />} onClick={() => setCaptureOpen(true)}>
           Capture
         </Button>
         <Button variant="primary" size="sm" icon={<Plus className="size-4" />} onClick={() => openCreate()}>
           <span className="hidden sm:inline">New meeting</span>
         </Button>
         <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
-        <ThemeToggle />
+        <div className="max-sm:hidden">
+          <ThemeToggle />
+        </div>
         <NotificationsMenu />
         <ProfileMenu />
       </div>

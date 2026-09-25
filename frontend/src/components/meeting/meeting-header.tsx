@@ -99,7 +99,7 @@ export function MeetingHeader() {
         <Button
           size="sm"
           icon={<Share2 className="size-4" />}
-          className="hidden sm:inline-flex"
+          className="max-sm:hidden"
           onClick={() => {
             void navigator.clipboard?.writeText(window.location.href);
             toast.success("Link copied", { description: "Team sharing and permissions are coming soon." });
