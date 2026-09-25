@@ -15,9 +15,14 @@ class Base(DeclarativeBase):
     pass
 
 
-def _build_engine(url: str) -> Engine:
-    connect_args = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    eng = create_engine(url, connect_args=connect_args)
+def _build_engine(url: str, auth_token: str | None) -> Engine:
+    libsql = url.startswith("sqlite+libsql")  # Turso / libSQL (hosted SQLite)
+    connect_args: dict = {}
+    if libsql and auth_token:
+        connect_args["auth_token"] = auth_token
+    elif url.startswith("sqlite") and not libsql:
+        connect_args["check_same_thread"] = False
+    eng = create_engine(url, connect_args=connect_args, pool_pre_ping=libsql)
 
     if url.startswith("sqlite"):
 
@@ -26,13 +31,15 @@ def _build_engine(url: str) -> Engine:
             cursor = dbapi_conn.cursor()
             # SQLite ships with FK enforcement off; every relationship below relies on it.
             cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.execute("PRAGMA journal_mode=WAL")
+            if not libsql:
+                cursor.execute("PRAGMA journal_mode=WAL")
             cursor.close()
 
     return eng
 
 
-engine = _build_engine(get_settings().database_url)
+_settings = get_settings()
+engine = _build_engine(_settings.database_url, _settings.database_auth_token)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

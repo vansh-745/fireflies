@@ -9,7 +9,8 @@ import pytest
 
 # Point the app at a throwaway database *before* it is imported.
 _tmp = Path(tempfile.mkdtemp()) / "test.db"
-os.environ["DATABASE_URL"] = f"sqlite:///{_tmp}"
+# TEST_DATABASE_URL lets the suite run against another driver, e.g. sqlite+libsql:///path.db
+os.environ["DATABASE_URL"] = os.getenv("TEST_DATABASE_URL", f"sqlite:///{_tmp}")
 os.environ["SEED_ON_STARTUP"] = "true"
 os.environ["ANTHROPIC_API_KEY"] = ""  # empty (not unset) so a local .env key is never picked up
 

@@ -15,7 +15,7 @@ from app.api import action_items, chat, meetings, transcript, workspace
 from app.config import get_settings
 from app.database import SessionLocal, init_db
 from app.errors import DomainError
-from app.models import Meeting
+from app.models import Meeting, User
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("app")
@@ -25,9 +25,10 @@ log = logging.getLogger("app")
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     init_db()
     if get_settings().seed_on_startup:
+        # Seed a brand-new workspace only: deleting every meeting shouldn't bring the demo back.
         with SessionLocal() as db:
-            empty = not db.scalar(select(func.count(Meeting.id)))
-        if empty:
+            fresh = not db.scalar(select(func.count(User.id))) and not db.scalar(select(func.count(Meeting.id)))
+        if fresh:
             from app.seed.seed import seed_database
 
             log.info("Empty database — loading demo meetings")

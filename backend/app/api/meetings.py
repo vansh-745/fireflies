@@ -21,7 +21,12 @@ router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
 def _schedule_llm_notes(background: BackgroundTasks, meeting_id: int) -> None:
-    if llm.llm_enabled():
+    """Upgrade the offline notes with Claude: after the response, or inline on serverless hosts."""
+    if not llm.llm_enabled():
+        return
+    if get_settings().run_ai_inline:
+        service.enhance_summary_in_background(meeting_id)
+    else:
         background.add_task(service.enhance_summary_in_background, meeting_id)
 
 
@@ -62,7 +67,8 @@ def create_meeting(data: MeetingCreate, db: DB, user: CurrentUser, background: B
     meeting = service.create_meeting(db, user, data, source=source, segments=segments)
     if segments:
         _schedule_llm_notes(background, meeting.id)
-    return service.build_detail(db, meeting)
+    db.expire_all()
+    return service.build_detail(db, service.get_meeting(db, meeting.id))
 
 
 @router.post("/upload", response_model=MeetingDetail, status_code=status.HTTP_201_CREATED)
@@ -99,7 +105,8 @@ async def upload_meeting(
 
     meeting = service.create_meeting(db, user, data, source=MeetingSource.UPLOAD, segments=segments)
     _schedule_llm_notes(background, meeting.id)
-    return service.build_detail(db, meeting)
+    db.expire_all()
+    return service.build_detail(db, service.get_meeting(db, meeting.id))
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetail)
@@ -125,7 +132,7 @@ def delete_meeting(meeting: MeetingDep, db: DB) -> Response:
 def regenerate_summary(meeting: MeetingDep, db: DB, background: BackgroundTasks) -> MeetingDetail:
     """Rebuild summary, outline and (open, AI-suggested) action items from the transcript."""
     if service.regenerate_summary(db, meeting):
-        background.add_task(service.enhance_summary_in_background, meeting.id)
+        _schedule_llm_notes(background, meeting.id)
     db.expire_all()
     return service.build_detail(db, service.get_meeting(db, meeting.id))
 

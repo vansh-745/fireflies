@@ -5,6 +5,7 @@ pydantic[email]==2.13.5
 python-multipart==0.0.32
 anthropic==1.8.0
 fpdf2==2.8.8
+sqlalchemy-libsql==0.2.0  # Turso (hosted SQLite) driver, used when TURSO_DATABASE_URL is set
 
 # tests
 pytest==9.1.1

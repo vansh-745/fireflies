@@ -68,7 +68,7 @@ authentication (a default user is always signed in).
 | --- | --- |
 | Frontend | Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4, TanStack Query, Radix UI primitives, Sonner toasts, lucide icons, date-fns |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.1 (typed ORM), Pydantic v2, Uvicorn |
-| Database | SQLite with enforced foreign keys and an **FTS5** full-text index |
+| Database | SQLite with enforced foreign keys and an **FTS5** full-text index (local file, or Turso's hosted SQLite in production) |
 | AI (optional) | Anthropic Claude via the official `anthropic` SDK (structured JSON output for the notes, prompt caching for chat) |
 | Exports | fpdf2 (PDF), plain Markdown / text / SRT |
 | Tests | pytest + FastAPI TestClient (26 tests) |
@@ -375,24 +375,58 @@ without a key. Upload one of the sample files on the **Uploads** page to see the
 
 ## Deployment
 
-The repository includes a **Render Blueprint** (`render.yaml`) and a backend `Dockerfile`.
+### Vercel (frontend + backend)
 
-**Render (both services)**
+Both apps deploy to Vercel as **two projects from the same repo**. Vercel detects the FastAPI app
+(`backend/app/main.py` exports `app`) and installs `backend/requirements.txt`.
 
-1. Push the repo to GitHub, then in Render go to **New → Blueprint** and select it.
-2. Deploy. When `fireflies-clone-api` is live, copy its URL (e.g. `https://fireflies-clone-api.onrender.com`).
-3. Set `BACKEND_URL` on `fireflies-clone-web` to that URL and redeploy it. `BACKEND_URL` is read at
-   build time, when Next.js resolves its rewrites.
-4. Optionally set `ANTHROPIC_API_KEY` on the API service.
+**Database.** A Vercel Function's disk is read-only apart from `/tmp`, which is per instance and wiped
+on cold start. For data that persists, use **[Turso](https://turso.tech)** (hosted SQLite, free tier). It
+runs the same schema, including the FTS5 search index, and the whole test suite passes against it.
 
-**Vercel (frontend) + Render/Railway (API).** Import the repo in Vercel with **Root Directory =
-`frontend`** and set `BACKEND_URL` to your API URL. Deploy `backend/` to Render (Python,
-`uvicorn app.main:app --host 0.0.0.0 --port $PORT`) or to Railway/Fly with the Dockerfile.
+```bash
+turso db create fireflies-clone          # or create it in the Turso dashboard
+turso db show fireflies-clone --url      # → libsql://fireflies-clone-<you>.turso.io
+turso db tokens create fireflies-clone   # → auth token
+```
 
-> **Persistence note:** free hosting tiers use ephemeral disks, so the SQLite file is reset on
-> restart and the app **re-seeds the demo data automatically** (`SEED_ON_STARTUP=true`). For durable
-> data, mount a disk or volume and point `DATABASE_URL` at it, e.g. `sqlite:////data/fireflies.db`,
-> which is what the Dockerfile does.
+1. **Backend project.** In Vercel: *Add New → Project*, import the repo, set **Root Directory = `backend`**
+   (framework preset: FastAPI), and add these environment variables:
+
+   | Variable | Value |
+   | --- | --- |
+   | `TURSO_DATABASE_URL` | `libsql://fireflies-clone-<you>.turso.io` |
+   | `TURSO_AUTH_TOKEN` | the token from above |
+   | `ANTHROPIC_API_KEY` | *(optional)* enables Claude notes and AskFred |
+
+   Deploy, then open `https://<backend>.vercel.app/api/health`. The first request creates the tables
+   and seeds the demo meetings, once: concurrent cold starts can't double-seed.
+   *Without the Turso variables the API still runs, on `/tmp` SQLite that re-seeds on every cold start.
+   That's fine for a quick look, but changes don't persist.*
+
+2. **Frontend project.** Import the same repo again with **Root Directory = `frontend`** (Next.js) and set
+   `BACKEND_URL=https://<backend>.vercel.app` (read at build time for the `/api/*` rewrite). Deploy.
+
+On Vercel, Claude-written notes run *inside* the upload request (`RUN_AI_INLINE`, on automatically
+when `VERCEL` is set), because a serverless instance may be frozen once the response is sent.
+`backend/vercel.json` allows 300 s for that.
+
+### Render or Docker (alternative)
+
+`render.yaml` is a Render Blueprint for both services (*New → Blueprint*), and `backend/Dockerfile`
+runs the API anywhere with a `/data` volume (`DATABASE_URL=sqlite:////data/fireflies.db`). On hosts
+with ephemeral disks the demo data re-seeds automatically (`SEED_ON_STARTUP=true`).
+
+### Environment variables (backend)
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | `sqlite:///backend/fireflies.db` | Any SQLAlchemy URL; takes precedence |
+| `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` | – | Use a Turso database |
+| `SEED_ON_STARTUP` | `true` | Load demo data into a brand-new database |
+| `ANTHROPIC_API_KEY`, `LLM_MODEL` | – / `claude-opus-5` | Claude-powered notes and AskFred |
+| `RUN_AI_INLINE` | `true` on Vercel | Run Claude during the request instead of in the background |
+| `CORS_ORIGINS` | `http://localhost:3000` | Only needed if the browser calls the API directly |
 
 ---
 

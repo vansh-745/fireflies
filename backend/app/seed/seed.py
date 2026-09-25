@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import Base, SessionLocal, engine, init_db
@@ -28,7 +29,7 @@ from app.models import (
 )
 from app.schemas import MeetingCreate, ParticipantIn
 from app.seed.data import MEETINGS, PEOPLE, SeedMeeting
-from app.services.directory import get_current_user
+from app.services.directory import DEFAULT_USER
 from app.services.meetings import insert_meeting, persist_summary
 from app.services.summarizer import ActionDraft, ChapterDraft, SummaryDraft
 from app.services.transcript_parser import parse_transcript
@@ -104,7 +105,16 @@ def seed_database(reset: bool = False) -> int:
         if db.scalar(select(func.count(Meeting.id))):
             log.info("Database already has meetings — skipping seed (use --reset to reseed)")
             return 0
-        user = get_current_user(db)
+        # Claim the seed by creating the default user. When several serverless instances start
+        # at once against a shared database, only one insert succeeds (users.email is unique).
+        user = User(**DEFAULT_USER)
+        db.add(user)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            log.info("Workspace already initialised by another process — skipping seed")
+            return 0
         now = utcnow()
         meetings = [_seed_meeting(db, user, spec, now) for spec in MEETINGS]
 
