@@ -34,13 +34,14 @@ export function MeetingView({ id }: { id: number }) {
   const meeting = useMeeting(id);
   const transcript = useTranscript(id);
 
-  if (meeting.isError) {
+  const error = meeting.error ?? transcript.error;
+  if (error) {
     return (
       <EmptyState
         className="py-24"
         icon={<FileText />}
-        title={meeting.error.message.includes("not found") ? "Meeting not found" : "Couldn't load this meeting"}
-        description={meeting.error.message}
+        title={error.message.includes("not found") ? "Meeting not found" : "Couldn't load this meeting"}
+        description={error.message}
         action={
           <Link href="/meetings">
             <Button variant="primary">Back to meetings</Button>
