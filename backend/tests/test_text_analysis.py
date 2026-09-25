@@ -43,3 +43,9 @@ def test_heuristic_summary_shape() -> None:
     assert draft.overview.startswith("- Ana and Ben met for about 1 minute")
     assert draft.chapters and draft.chapters[0].start_ms == 0
     assert [a.assignee for a in draft.action_items] == ["Ana"]
+
+
+def test_keywords_merge_plural_variants() -> None:
+    texts = ["Schools need support.", "The school budget.", "Every school and all schools.", "School support matters."]
+    keywords = [k.lower() for k in extract_keywords(texts)]
+    assert not ({"school", "schools"} <= set(keywords))

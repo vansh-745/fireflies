@@ -29,7 +29,8 @@ STOPWORDS = frozenset(
     times day days year years quick quickly start started point points part parts back yet already
     send sends sent share shared sounds perfect help helpful love hear feel honestly happy agree agreed
     question questions talk talking walk plus usually typically ideally anyway else two three four five six
-    seven eight nine ten monday tuesday wednesday thursday friday saturday sunday
+    seven eight nine ten monday tuesday wednesday thursday friday saturday sunday people person different cause
+    stuff everybody somebody whatever kinda probably exactly obviously anyway yeah
     """.split()
 )
 
@@ -85,11 +86,17 @@ def extract_keywords(texts: Iterable[str], limit: int = 8, exclude: Iterable[str
             scored.append((float(count), word))
     scored.sort(key=lambda item: (-item[0], item[1]))
 
+    def stem(text: str) -> str:
+        return " ".join(w[:-1] if w.endswith("s") and len(w) > 3 else w for w in text.split())
+
     chosen: list[str] = []
     for _, phrase in scored:
         parts = phrase.split()
         # Skip a single word already covered by a chosen phrase (and vice versa).
         if any(p in chosen for p in parts) or any(phrase in c.split() for c in chosen):
+            continue
+        # Skip plural/singular duplicates ("school" vs "schools").
+        if any(stem(phrase) == stem(c) or stem(phrase) in stem(c).split() for c in chosen):
             continue
         chosen.append(phrase)
         if len(chosen) >= limit:
@@ -212,7 +219,7 @@ def _clean_task(task: str, require_verb: bool = True) -> str | None:
         (r"\bmy\b", "their"),
         (r"\bme\b", "them"),
         (r"\byour\b", "their"),
-        (r"\byou(?=\s+(?:have|can|could|are|need|get|will|want|should|know|see|like)\b)", "they"),
+        (r"\byou(?=\s+(?:have|can|could|are|were|need|get|will|would|want|should|know|see|like|believe|think|mean|do|did|feel)\b)", "they"),
         (r"\byou\b", "them"),
     )
     for pattern, replacement in replacements:

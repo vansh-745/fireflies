@@ -68,3 +68,9 @@ def test_empty_and_invalid_inputs() -> None:
         parse_transcript("   ")
     with pytest.raises(TranscriptParseError):
         parse_transcript("{not json", "json")
+
+
+def test_json_qmsum_shape() -> None:
+    payload = {"meeting_transcripts": [{"speaker": "Project Manager", "content": "Welcome to the kick-off."}, {"speaker": "Marketing", "content": "Thanks."}]}
+    segments = parse_transcript(json.dumps(payload), filename="ES2002a.json")
+    assert [s.speaker for s in segments] == ["Project Manager", "Marketing"]

@@ -8,7 +8,8 @@ Supported formats
 * ``vtt``  – WebVTT; speakers from ``<v Name>`` voice tags or a ``Name:`` prefix.
 * ``srt``  – SubRip; speakers from a ``Name:`` prefix.
 * ``json`` – a list of ``{speaker, text, start, end}`` objects (seconds or ms),
-             or an object with a ``segments`` / ``sentences`` list in the same shape.
+             or an object with a ``segments`` / ``sentences`` / ``meeting_transcripts``
+             list in the same shape (``content`` is accepted for ``text``).
 
 When a format carries no timing information, timings are estimated from word
 counts at a natural speaking rate so the player and transcript stay usable.
@@ -163,7 +164,7 @@ def _parse_json(content: str) -> list[ParsedSegment]:
         raise TranscriptParseError(f"Invalid JSON: {exc.msg} (line {exc.lineno}).") from exc
 
     if isinstance(data, dict):
-        data = next((data[k] for k in ("segments", "sentences", "transcript", "utterances") if isinstance(data.get(k), list)), None)
+        data = next((data[k] for k in ("segments", "sentences", "transcript", "utterances", "meeting_transcripts") if isinstance(data.get(k), list)), None)
     if not isinstance(data, list):
         raise TranscriptParseError("JSON transcripts must be a list of segments or contain a 'segments' list.")
 
