@@ -7,6 +7,7 @@ which one produced the notes.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from app.config import get_settings
@@ -80,7 +81,9 @@ def heuristic_summary(title: str, segments: list[SegmentInput], participants: li
     for s in segments:
         talk[s.speaker] = talk.get(s.speaker, 0) + (s.end_ms - s.start_ms)
     speakers = sorted(talk, key=lambda name: -talk[name])
-    topics = [k.lower() for k in keywords[:3]]
+    # Lower-case keywords for the prose, unless the transcript always capitalises them.
+    corpus = " ".join(s.text for s in segments)
+    topics = [k.lower() if re.search(rf"\b{re.escape(k.lower())}\b", corpus) else k for k in keywords[:3]]
 
     if topics:
         gist = f"Discussion of {_join_human(topics)}."
@@ -105,17 +108,18 @@ def heuristic_summary(title: str, segments: list[SegmentInput], participants: li
         gist=gist,
         overview="\n".join(overview_lines),
         keywords=keywords,
-        chapters=_heuristic_chapters(segments, name_tokens),
+        chapters=_heuristic_chapters(segments, keywords, name_tokens),
         action_items=actions,
         source=SummarySource.HEURISTIC,
     )
 
 
-def _heuristic_chapters(segments: list[SegmentInput], exclude: set[str]) -> list[ChapterDraft]:
+def _heuristic_chapters(segments: list[SegmentInput], keywords: list[str], exclude: set[str]) -> list[ChapterDraft]:
+    corpus = " ".join(s.text for s in segments).lower()
     start, end = segments[0].start_ms, segments[-1].end_ms
-    duration_min = (end - start) / 60_000
-    count = max(1, min(6, round(duration_min / 4), len(segments) // 4))
-    span = (end - start) / count
+    # Roughly one chapter per seven utterances, between one and six chapters.
+    count = max(1, min(6, len(segments) // 7))
+    span = max(1, end - start) / count
 
     # Chunk by elapsed time, snapping each boundary to the next segment start.
     chunks: list[list[SegmentInput]] = [[] for _ in range(count)]
@@ -124,7 +128,16 @@ def _heuristic_chapters(segments: list[SegmentInput], exclude: set[str]) -> list
 
     chapters: list[ChapterDraft] = []
     for number, chunk in enumerate(c for c in chunks if c):
-        kws = extract_keywords([s.text for s in chunk], limit=2, exclude=exclude)
+        # Prefer meeting keywords concentrated in this chunk (share of all mentions).
+        chunk_text = " ".join(s.text for s in chunk).lower()
+        scored = []
+        for k in keywords:
+            n = chunk_text.count(k.lower())
+            if n:
+                scored.append((n / max(1, corpus.count(k.lower())), n, k))
+        kws = [k for _, _, k in sorted(scored, key=lambda c: (-c[0], -c[1]))][:2]
+        if not kws:
+            kws = extract_keywords([s.text for s in chunk], limit=2, exclude=exclude)
         title = " & ".join(kws) if kws else f"Part {number + 1}"
         ranked = rank_sentences([(s.speaker, s.text) for s in chunk])
         best = sorted(ranked[:3], key=lambda r: r.segment_index)

@@ -27,6 +27,9 @@ STOPWORDS = frozenset(
     wanted make makes made take takes took look looking looks mean means meant pretty able little bit via also
     etc anything everything nothing anyone someone first second next last new old big small many much time
     times day days year years quick quickly start started point points part parts back yet already
+    send sends sent share shared sounds perfect help helpful love hear feel honestly happy agree agreed
+    question questions talk talking walk plus usually typically ideally anyway else two three four five six
+    seven eight nine ten monday tuesday wednesday thursday friday saturday sunday
     """.split()
 )
 
@@ -53,17 +56,25 @@ def extract_keywords(texts: Iterable[str], limit: int = 8, exclude: Iterable[str
     """Frequent content words and two-word phrases, phrases preferred.
 
     ``exclude`` removes e.g. participant names so they don't dominate keywords.
+    Keywords keep the casing used in the transcript ("Salesforce", "OAuth").
     """
     excluded = {e.lower() for e in exclude}
     unigrams: Counter[str] = Counter()
     bigrams: Counter[str] = Counter()
+    surface: dict[str, Counter[str]] = {}
+
     for text in texts:
         for sentence in split_sentences(text):
-            tokens = [w for w in words(sentence) if w not in excluded]
-            unigrams.update(w for w in tokens if len(w) > 3 and w not in STOPWORDS)
-            for a, b in zip(tokens, tokens[1:]):
+            raw = [w.strip("'-") for w in _WORD.findall(sentence)]
+            pairs = [(w.lower(), w) for w in raw if w.lower() not in excluded]
+            for low, original in pairs:
+                if len(low) > 3 and low not in STOPWORDS:
+                    unigrams[low] += 1
+                    surface.setdefault(low, Counter())[original] += 1
+            for (a, a_raw), (b, b_raw) in zip(pairs, pairs[1:]):
                 if a not in STOPWORDS and b not in STOPWORDS and len(a) > 2 and len(b) > 2:
                     bigrams[f"{a} {b}"] += 1
+                    surface.setdefault(f"{a} {b}", Counter())[f"{a_raw} {b_raw}"] += 1
 
     scored: list[tuple[float, str]] = []
     for phrase, count in bigrams.items():
@@ -83,11 +94,12 @@ def extract_keywords(texts: Iterable[str], limit: int = 8, exclude: Iterable[str
         chosen.append(phrase)
         if len(chosen) >= limit:
             break
-    return [_title(k) for k in chosen]
+    return [_display(surface[k].most_common(1)[0][0]) for k in chosen]
 
 
-def _title(phrase: str) -> str:
-    return " ".join(w.upper() if len(w) <= 3 and w in {"api", "ui", "ux", "qa", "crm", "sso", "roi", "kpi", "sla"} else w.capitalize() for w in phrase.split())
+def _display(phrase: str) -> str:
+    """Capitalise plain words but leave brand/acronym casing ("OAuth", "SOC") alone."""
+    return " ".join(w if any(c.isupper() for c in w[1:]) else w[:1].upper() + w[1:] for w in phrase.split())
 
 
 # ── Sentence ranking ─────────────────────────────────────────────────────────
@@ -182,13 +194,20 @@ def extract_action_items(segments: list[tuple[str, str]], participants: Iterable
     return found
 
 
+_VAGUE_OBJECT = re.compile(r"^\w+ (?:it|that|this|those|these)\b", re.IGNORECASE)
+_MEETING_CHATTER = re.compile(r"\b(?:screen|slides? now|recording|mute|camera)\b", re.IGNORECASE)
+
+
 def _clean_task(task: str) -> str | None:
     task = task.strip().rstrip(".?!,;").strip()
     task = re.sub(r"\b(?:I think|you know|like|basically)\b,?\s*", "", task, flags=re.IGNORECASE)
-    task = re.sub(r"\bmy\b", "their", task)
-    task = re.sub(r"\bme\b", "them", task)
+    # First person → third person, and "you" (the other party) → "them".
+    for pattern, replacement in ((r"\bmy\b", "their"), (r"\bme\b", "them"), (r"\byour\b", "their"), (r"\byou\b", "them")):
+        task = re.sub(pattern, replacement, task)
     first = task.split(" ", 1)[0].lower() if task else ""
     if first not in _TASK_VERBS or len(task.split()) < 3 or len(task) > 180:
+        return None
+    if _VAGUE_OBJECT.match(task) or _MEETING_CHATTER.search(task):
         return None
     return task[0].upper() + task[1:]
 
