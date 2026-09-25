@@ -89,9 +89,10 @@ def heuristic_summary(title: str, segments: list[SegmentInput], participants: li
         gist = f"Discussion of {_join_human(topics)}."
     else:
         gist = f"A {duration_min}-minute conversation between {_join_human([_first_name(s) for s in speakers[:3]])}."
+    minutes = f"{duration_min} minute{'s' if duration_min != 1 else ''}"
 
     opener = (
-        f"{_join_human([_first_name(s) for s in speakers[:4]])} met for about {duration_min} minutes"
+        f"{_join_human([_first_name(s) for s in speakers[:4]])} met for about {minutes}"
         + (f" to discuss {_join_human(topics)}." if topics else ".")
     )
     highlights = sorted(ranked[:4], key=lambda r: r.segment_index)

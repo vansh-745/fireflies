@@ -160,7 +160,8 @@ _TEAM_TASK = re.compile(
 _TASK_VERBS = frozenset(
     "send share schedule set draft write update review follow finalize prepare create book reach loop sync put "
     "add fix ship check confirm test run circulate publish post file look dig pull build own organize document "
-    "email call ping talk set-up get order move migrate audit clean investigate reach".split()
+    "email call ping talk set-up get order move migrate audit clean investigate enable turn give make start finish "
+    "coordinate connect introduce recruit submit deliver invite arrange remind handle plan bump assign".split()
 )
 
 
@@ -172,10 +173,12 @@ def extract_action_items(segments: list[tuple[str, str]], participants: Iterable
     for index, (speaker, text) in enumerate(segments):
         for sentence in split_sentences(text):
             candidate: tuple[str, str | None] | None = None
+            direct_request = False
             if match := _REQUEST.match(sentence):
                 person = first_names.get(match.group("name").lower())
                 if person:
                     candidate = (match.group("task"), person)
+                    direct_request = True
             if candidate is None and (match := _SELF_COMMIT.search(sentence)):
                 candidate = (match.group("task"), speaker)
             if candidate is None and (match := _TEAM_TASK.search(sentence)):
@@ -183,7 +186,8 @@ def extract_action_items(segments: list[tuple[str, str]], participants: Iterable
             if candidate is None:
                 continue
 
-            task = _clean_task(candidate[0])
+            # "Grace, can you …" is a task whatever the verb; otherwise require an action verb.
+            task = _clean_task(candidate[0], require_verb=not direct_request)
             if not task:
                 continue
             key = " ".join(content_words(task))[:60]
@@ -198,14 +202,23 @@ _VAGUE_OBJECT = re.compile(r"^\w+ (?:it|that|this|those|these)\b", re.IGNORECASE
 _MEETING_CHATTER = re.compile(r"\b(?:screen|slides? now|recording|mute|camera)\b", re.IGNORECASE)
 
 
-def _clean_task(task: str) -> str | None:
+def _clean_task(task: str, require_verb: bool = True) -> str | None:
     task = task.strip().rstrip(".?!,;").strip()
     task = re.sub(r"\b(?:I think|you know|like|basically)\b,?\s*", "", task, flags=re.IGNORECASE)
-    # First person → third person, and "you" (the other party) → "them".
-    for pattern, replacement in ((r"\bmy\b", "their"), (r"\bme\b", "them"), (r"\byour\b", "their"), (r"\byou\b", "them")):
+    # Keep the first clause: "send the report, and right now …" → "send the report".
+    task = re.split(r",\s+(?:and|but|so|because)\s+|;\s+", task, maxsplit=1)[0]
+    # First person → third person; "you" (the other party) → "they" as a subject, "them" otherwise.
+    replacements = (
+        (r"\bmy\b", "their"),
+        (r"\bme\b", "them"),
+        (r"\byour\b", "their"),
+        (r"\byou(?=\s+(?:have|can|could|are|need|get|will|want|should|know|see|like)\b)", "they"),
+        (r"\byou\b", "them"),
+    )
+    for pattern, replacement in replacements:
         task = re.sub(pattern, replacement, task)
     first = task.split(" ", 1)[0].lower() if task else ""
-    if first not in _TASK_VERBS or len(task.split()) < 3 or len(task) > 180:
+    if (require_verb and first not in _TASK_VERBS) or len(task.split()) < 3 or len(task) > 180:
         return None
     if _VAGUE_OBJECT.match(task) or _MEETING_CHATTER.search(task):
         return None
